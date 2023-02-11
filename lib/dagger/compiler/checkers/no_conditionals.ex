@@ -1,17 +1,22 @@
 defmodule Dagger.Compiler.Checkers.NoConditionalsChecker do
-  defstruct [:prohibited, :in_conditional, :file_name]
+  defstruct [:prohibited, :conditional, :file_name]
 
   def new(prohibited) do
     %__MODULE__{prohibited: prohibited}
   end
+
+  def in_conditional?(state) do
+    state.conditional != nil
+  end
 end
 
 alias Dagger.Compiler.Checkers.NoConditionalsChecker
+alias Dagger.NextStepCallError
 
 defimpl Dagger.Compiler.Checker, for: NoConditionalsChecker do
   def check!(%NoConditionalsChecker{} = checker, file_name, ast) do
     # Reset in_conditional flag and file_name before checking
-    checker = %{checker | in_conditional: false, file_name: file_name}
+    checker = %{checker | conditional: nil, file_name: file_name}
     ensure_no_conditionals(checker, ast)
   end
 
@@ -24,15 +29,25 @@ defimpl Dagger.Compiler.Checker, for: NoConditionalsChecker do
   end
 
   defp ensure_no_conditionals(checker, {:case, _, body}) do
-    ensure_no_conditionals(%{checker | in_conditional: true}, body)
+    ensure_no_conditionals(%{checker | conditional: :case}, body)
   end
 
   defp ensure_no_conditionals(checker, {:cond, _, body}) do
-    ensure_no_conditionals(%{checker | in_conditional: true}, body)
+    ensure_no_conditionals(%{checker | conditional: :cond}, body)
   end
 
   defp ensure_no_conditionals(checker, {:if, _, body}) do
-    ensure_no_conditionals(%{checker | in_conditional: true}, body)
+    ensure_no_conditionals(%{checker | conditional: :if}, body)
+  end
+
+  defp ensure_no_conditionals(checker, {:else, rest}) do
+    ensure_no_conditionals(%{checker | conditional: :else}, rest)
+  end
+
+  defp ensure_no_conditionals(checker, {:with, matches, body}) do
+    checker = %{checker | conditional: :with}
+    ensure_no_conditionals(checker, matches)
+    ensure_no_conditionals(checker, body)
   end
 
   defp ensure_no_conditionals(checker, {:and, _, rest}) do
@@ -40,10 +55,6 @@ defimpl Dagger.Compiler.Checker, for: NoConditionalsChecker do
   end
 
   defp ensure_no_conditionals(checker, {:do, rest}) do
-    ensure_no_conditionals(checker, rest)
-  end
-
-  defp ensure_no_conditionals(checker, {:else, rest}) do
     ensure_no_conditionals(checker, rest)
   end
 
@@ -60,17 +71,21 @@ defimpl Dagger.Compiler.Checker, for: NoConditionalsChecker do
   end
 
   defp ensure_no_conditionals(checker, ast) when is_tuple(ast) do
-    if checker.in_conditional do
+    if NoConditionalsChecker.in_conditional?(checker) do
       prohibited = checker.prohibited
 
       case ast do
         {^prohibited, [line: line], _} ->
-          raise %CompileError{
+          raise NextStepCallError,
             file: checker.file_name,
             line: line,
-            description:
-              "Calling #{checker.prohibited} inside a conditional expression is not allowed"
-          }
+            expr_type: checker.conditional
+
+        {^prohibited, _, _} ->
+          raise NextStepCallError,
+            file: checker.file_name,
+            line: 0,
+            expr_type: checker.conditional
 
         _ ->
           :ok

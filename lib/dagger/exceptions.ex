@@ -14,6 +14,28 @@ defmodule Dagger.MissingStepError do
   end
 end
 
+defmodule Dagger.NextStepCallError do
+  defexception [:message]
+
+  @impl true
+  def exception(file: file, expr_type: type) do
+    exception(file: file, line: 0, expr_type: type)
+  end
+
+  def exception(file: file, line: line, expr_type: type) do
+    msg =
+      Enum.join(
+        [
+          "#{file}:#{line}: Calling next_step/1 inside a conditional",
+          "expression (#{type}) is not allowed"
+        ],
+        " "
+      )
+
+    %__MODULE__{message: msg}
+  end
+end
+
 defmodule Dagger.StepConfigurationError do
   defexception [:message]
 

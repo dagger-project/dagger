@@ -34,6 +34,6 @@ defmodule Dagger.Flow do
 
   defmacro __before_compile__(_env) do
     comp = Module.get_attribute(__CALLER__.module, :dagger_compiler)
-    Compiler.finalize(comp)
+    Compiler.finalize!(comp)
   end
 end

@@ -18,10 +18,45 @@ defmodule Dagger.CompilerHelpers do
   def with_steps(mod_name, file_name, steps) do
     comp = with_preamble(mod_name, file_name)
 
-    Enum.each(steps, fn %{name: name, line: line, args: args, do: _} ->
-      Compiler.add_step(comp, @callback_mod, name, [line: line], args, do: :ok)
+    Enum.each(steps, fn %{name: name, line: line, args: args, do: block} ->
+      Compiler.add_step(comp, @callback_mod, name, line, args, do: block)
     end)
 
     comp
+  end
+
+  def valid(mod_name, file_name, steps \\ []) do
+    flow_steps =
+      if Enum.empty?(steps) do
+        ast =
+          quote do
+            next_step(finish)
+          end
+
+        [
+          %{name: :start, line: 4, args: [], do: ast},
+          %{name: :finish, line: 10, args: [], do: :ok}
+        ]
+      else
+        [first | _] = steps
+        first_name = Map.get(first, :name)
+
+        ast =
+          quote do
+            next_step(unquote(first_name))
+          end
+
+        [
+          %{name: :start, line: 4, args: [], do: ast},
+          %{name: :finish, line: 10, args: [], do: :ok}
+        ]
+      end
+
+    flow_steps = flow_steps ++ steps
+    with_steps(mod_name, file_name, flow_steps)
+  end
+
+  def build_spec({_, _, [{:spec, _, [spec]}]}) do
+    [{:spec, spec, :ignored}]
   end
 end

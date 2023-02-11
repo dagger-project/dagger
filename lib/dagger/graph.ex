@@ -62,6 +62,7 @@ defmodule Dagger.Graph do
 
   defp sanitize_module_name(name) when is_binary(name) do
     String.replace_leading(name, "Elixir.", "")
+    |> String.replace(~r/\./, "")
     |> String.slice(0..30)
     |> hyphenate()
   end

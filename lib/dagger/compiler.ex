@@ -2,7 +2,7 @@ defmodule Dagger.Compiler do
   alias Dagger.MissingStepError
   alias Dagger.Graph
   alias Dagger.Graph.Step
-  alias Dagger.Compiler.{Checker, Tracker}
+  alias Dagger.Compiler.{Checker, Tracker, SpecParser}
   alias Dagger.Compiler.Checkers.NoConditionalsChecker
 
   defstruct [:tracker_pid, :file_name, :flow_mod]
@@ -25,12 +25,16 @@ defmodule Dagger.Compiler do
     end
   end
 
-  def add_step(comp, callback_module, name, [line: line_num] = line, args, do: block) do
+  def get_dag(comp) do
+    Tracker.dag(comp.tracker_pid)
+  end
+
+  def add_step(comp, callback_module, name, line, args, do: block) do
     next_step = extract_next_step(comp, block)
-    step = Step.new(name, line_num, length(args), next_step)
-    dag = Tracker.dag(comp.tracker_pid)
+    step = Step.new(name, line, length(args), next_step)
+    dag = get_dag(comp)
     Tracker.update_dag(comp.tracker_pid, Graph.add_step(dag, step))
-    ast = {name, line, args}
+    ast = {name, [line: line], args}
 
     quote do
       def unquote(ast) do
@@ -41,7 +45,7 @@ defmodule Dagger.Compiler do
   end
 
   def check_next_step_call!(comp, line, {fun_name, arity}) do
-    dag = Tracker.dag(comp.tracker_pid)
+    dag = get_dag(comp)
 
     if not Graph.has_step?(dag, fun_name) do
       raise %CompileError{
@@ -56,8 +60,8 @@ defmodule Dagger.Compiler do
     end
   end
 
-  def finalize(comp) do
-    dag = Tracker.dag(comp.tracker_pid)
+  def finalize!(comp) do
+    dag = get_dag(comp)
     validate!(dag)
     dag = Macro.escape(dag)
 
@@ -70,17 +74,12 @@ defmodule Dagger.Compiler do
   end
 
   def handle_spec(comp, spec) do
-    {:spec, {:"::", _, [{fun_name, _, inputs}, return]}, _} = hd(spec)
-    dag = Tracker.dag(comp.tracker_pid)
-    step = Graph.get_step(dag, fun_name)
-    inputs = Enum.map(inputs, &parse_type/1)
-    step = %{step | inputs: inputs, return: parse_type(return)}
-    Tracker.update_dag(comp.tracker_pid, Graph.update_step(dag, step))
+    dag =
+      get_dag(comp)
+      |> SpecParser.parse_signature(spec)
+
+    Tracker.update_dag(comp.tracker_pid, dag)
   end
-
-  defp parse_type({type, _, _}), do: type
-
-  defp parse_type([{type, _, _}]), do: %{type: :list, member_type: type}
 
   defp extract_next_step(comp, block) do
     checker = NoConditionalsChecker.new(:next_step)

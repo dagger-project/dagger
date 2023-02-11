@@ -12,7 +12,7 @@ defmodule Dagger.MixProject do
       deps: deps(),
       test_coverage: test_coverage(),
       aliases: aliases(),
-      preferred_cli_env: [coverage: :test]
+      preferred_cli_env: [cover: :test, coverage: :test]
     ]
   end
 
@@ -38,13 +38,23 @@ defmodule Dagger.MixProject do
   defp elixirc_paths(_), do: ["lib"]
 
   defp aliases() do
-    [coverage: ["test --cover"]]
+    [coverage: "test --cover", cover: "coverage"]
   end
 
-  def test_coverage() do
+  defp test_coverage() do
     [
       summary: [threshold: 80],
-      ignore_modules: [Dagger.Flow, Dagger.MissingStepError, Dagger.StepConfigurationError]
+      ignore_modules: ignore_for_test()
+    ]
+  end
+
+  defp ignore_for_test() do
+    [
+      Dagger.Flow,
+      Dagger.MissingStepError,
+      Dagger.StepConfigurationError,
+      Dagger.Compiler.Checker,
+      Dagger.CompilerHelpers
     ]
   end
 end
