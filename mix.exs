@@ -7,8 +7,12 @@ defmodule Dagger.MixProject do
       version: "0.1.0",
       elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
+      elixirc_options: elixirc_options(Mix.env()),
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      test_coverage: test_coverage(),
+      aliases: aliases(),
+      preferred_cli_env: [coverage: :test]
     ]
   end
 
@@ -26,6 +30,21 @@ defmodule Dagger.MixProject do
     ]
   end
 
+  defp elixirc_options(:prod), do: [warnings_as_errors: true]
+  defp elixirc_options(_), do: []
+
   defp elixirc_paths(:dev), do: ["lib", "examples"]
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
+
+  defp aliases() do
+    [coverage: ["test --cover"]]
+  end
+
+  def test_coverage() do
+    [
+      summary: [threshold: 80],
+      ignore_modules: [Dagger.Flow, Dagger.MissingStepError, Dagger.StepConfigurationError]
+    ]
+  end
 end
