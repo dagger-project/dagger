@@ -18,9 +18,16 @@ defmodule Dagger.Compiler.SpecParser do
             {key_type, value_type}
           ]}
        ) do
+    parsed_key_type =
+      if is_atom(key_type) do
+        %{type: :required, name: key_type}
+      else
+        parse_type(module, key_type)
+      end
+
     %{
       type: :map,
-      key_type: parse_type(module, key_type),
+      key_type: parsed_key_type,
       value_type: parse_type(module, value_type)
     }
   end

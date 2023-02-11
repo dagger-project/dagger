@@ -327,7 +327,7 @@ defmodule Dagger.CompilerTest do
       assert step.return == :String
     end
 
-    test "compiler detects map arg from step spec" do
+    test "compiler detects typed map arg from step spec" do
       ast =
         quote do
           next_step(finish)
@@ -342,6 +342,32 @@ defmodule Dagger.CompilerTest do
         CompilerHelpers.build_spec(
           quote do
             @spec foo(%{String.t() => integer()}) :: String.t()
+          end
+        )
+
+      Compiler.handle_spec(comp, spec)
+      dag = Compiler.get_dag(comp)
+      step = Graph.get_step(dag, :foo)
+      assert step
+      assert step.inputs == [%{type: :map, key_type: :String, value_type: :integer}]
+      assert step.return == :String
+    end
+
+    test "compiler detects map arg with specific keys from step spec" do
+      ast =
+        quote do
+          next_step(finish)
+        end
+
+      comp =
+        CompilerHelpers.valid(__MODULE__, __ENV__.file, [
+          %{name: :foo, args: [:a], line: 6, do: ast}
+        ])
+
+      spec =
+        CompilerHelpers.build_spec(
+          quote do
+            @spec foo(%{user: [integer()]}) :: String.t()
           end
         )
 
