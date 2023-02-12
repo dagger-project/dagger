@@ -52,8 +52,8 @@ defmodule Dagger.CompilerHelpers do
         ]
       end
 
-    flow_steps = flow_steps ++ steps
-    with_steps(mod_name, file_name, flow_steps)
+    flow = flow_steps ++ steps
+    with_steps(mod_name, file_name, flow)
   end
 
   def build_spec({_, _, [{:spec, _, [spec]}]}) do

@@ -1,5 +1,5 @@
 defmodule Dagger.Compiler do
-  alias Dagger.MissingStepError
+  alias Dagger.UnusedStepsError
   alias Dagger.Graph
   alias Dagger.Graph.Step
   alias Dagger.Compiler.{Checker, Tracker, SpecParser}
@@ -8,7 +8,9 @@ defmodule Dagger.Compiler do
   defstruct [:tracker_pid, :file_name, :flow_mod]
 
   def new(flow_mod, file_name) do
-    case Tracker.start(Graph.new(flow_mod, file_name)) do
+    {:ok, dag} = Graph.new(flow_mod, file_name)
+
+    case Tracker.start(dag) do
       {:ok, pid} ->
         {:ok, %__MODULE__{tracker_pid: pid, flow_mod: flow_mod, file_name: file_name}}
 
@@ -29,12 +31,13 @@ defmodule Dagger.Compiler do
     Tracker.dag(comp.tracker_pid)
   end
 
-  def add_step(comp, callback_module, name, line, args, do: block) do
+  def add_step(comp, callback_module, name, [line: line_num] = line, args, do: block) do
     next_step = extract_next_step(comp, block)
-    step = Step.new(name, line, length(args), next_step)
+    step = Step.new(name, line_num, length(args), next_step)
     dag = get_dag(comp)
-    Tracker.update_dag(comp.tracker_pid, Graph.add_step(dag, step))
-    ast = {name, [line: line], args}
+    {:ok, dag} = Graph.add_step(dag, step)
+    Tracker.update_dag(comp.tracker_pid, dag)
+    ast = {name, line, args}
 
     quote do
       def unquote(ast) do
@@ -60,13 +63,41 @@ defmodule Dagger.Compiler do
     end
   end
 
-  def finalize!(comp) do
+  def finalize!(comp, output \\ &IO.puts/2) do
     dag = get_dag(comp)
-    validate!(dag)
-    dag = Macro.escape(dag)
+    result = validate!(dag)
+
+    case result do
+      :ok ->
+        :ok
+
+      {:warn, {:unused_steps, names}} ->
+        names = Enum.map(names, fn {_, name} -> name end)
+
+        case Application.get_env(:dagger, :warnings_as_errors, false) do
+          true ->
+            raise UnusedStepsError, module: dag.module, steps: names
+
+          false ->
+            message =
+              if length(names) == 1 do
+                "Unused step found in DAG #{dag.module}:"
+              else
+                "Unused steps found in DAG #{dag.module}:"
+              end
+
+            message = "#{message} #{Enum.join(names, ", ")}"
+            output.(:stderr, "WARN: #{message}")
+
+          :none ->
+            :ok
+        end
+    end
+
+    escaped = Macro.escape(dag)
 
     quote do
-      def dag(), do: unquote(dag)
+      def dag(), do: unquote(escaped)
     end
   end
 
@@ -74,7 +105,7 @@ defmodule Dagger.Compiler do
   end
 
   def handle_spec(comp, spec) do
-    dag =
+    {:ok, dag} =
       get_dag(comp)
       |> SpecParser.parse_signature(spec)
 
@@ -90,6 +121,9 @@ defmodule Dagger.Compiler do
         {:next_step, _meta, [{name, _, _}]} = node, _ ->
           {node, name}
 
+        {:next_step, _meta, [name]} = node, _ ->
+          {node, name}
+
         other, next ->
           {other, next}
       end)
@@ -97,15 +131,5 @@ defmodule Dagger.Compiler do
     next_step
   end
 
-  defp validate!(dag) do
-    if not Graph.has_step?(dag, :start) do
-      raise MissingStepError, module: dag.module, step: :start
-    end
-
-    if not Graph.has_step?(dag, :finish) do
-      raise MissingStepError, module: dag.module, step: :finish
-    end
-
-    Graph.validate!(dag)
-  end
+  defp validate!(dag), do: Graph.validate!(dag)
 end

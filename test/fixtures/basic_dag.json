@@ -1,0 +1,24 @@
+{
+  "module": "Elixir.MyOtherFlow",
+  "sanitized_name": "my-other-flow",
+  "steps": [
+    {
+      "line": 8,
+      "arity": 0,
+      "fun_name": "finish",
+      "inputs": [],
+      "name": "finish",
+      "next": null,
+      "return": "unknown"
+    },
+    {
+      "line": 4,
+      "arity": 0,
+      "fun_name": "start",
+      "inputs": [],
+      "name": "start",
+      "next": "finish",
+      "return": "unknown"
+    }
+  ]
+}

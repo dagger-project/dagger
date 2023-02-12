@@ -2,7 +2,7 @@ defmodule Dagger.Compiler.SpecParser do
   alias Dagger.Graph
 
   def parse_signature(dag, [{:spec, {:"::", _, [{fun_name, _, inputs}, return]}, _} | _]) do
-    step = Graph.get_step(dag, fun_name)
+    {:ok, step} = Graph.get_step(dag, fun_name)
     inputs = Enum.map(inputs, &parse_type(dag.module, &1))
     return = parse_type(dag.module, return)
     Graph.update_step(dag, %{step | inputs: inputs, return: return})

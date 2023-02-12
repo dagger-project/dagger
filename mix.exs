@@ -50,11 +50,13 @@ defmodule Dagger.MixProject do
 
   defp ignore_for_test() do
     [
-      Dagger.Flow,
-      Dagger.MissingStepError,
-      Dagger.StepConfigurationError,
       Dagger.Compiler.Checker,
-      Dagger.CompilerHelpers
+      Dagger.Compiler.Checkers.NoConditionalsChecker,
+      Dagger.CompilerHelpers,
+      Dagger.Flow,
+      Dagger.GraphNeverFinishesError,
+      Dagger.MissingStepError,
+      Dagger.StepConfigurationError
     ]
   end
 end

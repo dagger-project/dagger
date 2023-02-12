@@ -243,7 +243,7 @@ defmodule Dagger.CompilerTest do
 
       Compiler.handle_spec(comp, spec)
       dag = Compiler.get_dag(comp)
-      step = Graph.get_step(dag, :foo)
+      {:ok, step} = Graph.get_step(dag, :foo)
       assert step
       assert step.inputs == [:integer, :integer]
       refute step.return == :unknown
@@ -269,7 +269,7 @@ defmodule Dagger.CompilerTest do
 
       Compiler.handle_spec(comp, spec)
       dag = Compiler.get_dag(comp)
-      step = Graph.get_step(dag, :foo)
+      {:ok, step} = Graph.get_step(dag, :foo)
       assert step
       assert step.inputs == [:String, :integer]
       assert step.return == :integer
@@ -295,7 +295,7 @@ defmodule Dagger.CompilerTest do
 
       Compiler.handle_spec(comp, spec)
       dag = Compiler.get_dag(comp)
-      step = Graph.get_step(dag, :foo)
+      {:ok, step} = Graph.get_step(dag, :foo)
       assert step
       assert step.inputs == [:String]
       assert step.return == :String
@@ -321,7 +321,7 @@ defmodule Dagger.CompilerTest do
 
       Compiler.handle_spec(comp, spec)
       dag = Compiler.get_dag(comp)
-      step = Graph.get_step(dag, :foo)
+      {:ok, step} = Graph.get_step(dag, :foo)
       assert step
       assert step.inputs == [%{member_type: :String, type: :list}]
       assert step.return == :String
@@ -347,7 +347,7 @@ defmodule Dagger.CompilerTest do
 
       Compiler.handle_spec(comp, spec)
       dag = Compiler.get_dag(comp)
-      step = Graph.get_step(dag, :foo)
+      {:ok, step} = Graph.get_step(dag, :foo)
       assert step
       assert step.inputs == [%{type: :map, key_type: :String, value_type: :integer}]
       assert step.return == :String
@@ -373,9 +373,17 @@ defmodule Dagger.CompilerTest do
 
       Compiler.handle_spec(comp, spec)
       dag = Compiler.get_dag(comp)
-      step = Graph.get_step(dag, :foo)
+      {:ok, step} = Graph.get_step(dag, :foo)
       assert step
-      assert step.inputs == [%{type: :map, key_type: :String, value_type: :integer}]
+
+      assert step.inputs == [
+               %{
+                 type: :map,
+                 key_type: %{name: :user, type: :required},
+                 value_type: %{member_type: :integer, type: :list}
+               }
+             ]
+
       assert step.return == :String
     end
   end

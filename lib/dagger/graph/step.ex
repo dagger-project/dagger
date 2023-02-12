@@ -1,5 +1,14 @@
 defmodule Dagger.Graph.Step do
-  @derive {Jason.Encoder, only: [:line, :arity, :fun_name, :inputs, :name, :next, :return]}
+  @derive {Jason.Encoder,
+           only: [
+             :arity,
+             :fun_name,
+             :inputs,
+             :line,
+             :name,
+             :next,
+             :return
+           ]}
   defstruct [:line, :arity, :name, :fun_name, :inputs, :return, :next]
 
   def new(fun_name, line, arity, next_step) do
