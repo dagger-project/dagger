@@ -31,13 +31,14 @@ defmodule Dagger.Compiler do
     Tracker.dag(comp.tracker_pid)
   end
 
-  def add_step(comp, callback_module, name, [line: line_num] = line, args, do: block) do
+  def add_step(comp, callback_module, name, line_num, args, do: block)
+      when is_integer(line_num) do
     next_step = extract_next_step(comp, block)
     step = Step.new(name, line_num, length(args), next_step)
     dag = get_dag(comp)
     {:ok, dag} = Graph.add_step(dag, step)
     Tracker.update_dag(comp.tracker_pid, dag)
-    ast = {name, line, args}
+    ast = {name, [line: line_num], args}
 
     quote do
       def unquote(ast) do

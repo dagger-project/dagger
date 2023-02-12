@@ -12,9 +12,9 @@ defmodule Dagger.Flow do
     Compiler.add_preamble(comp, __MODULE__, defstep: 2, next_step: 1, map: 2)
   end
 
-  defmacro defstep({name, line, args}, do_block) do
+  defmacro defstep({name, [line: line_num], args}, do_block) do
     comp = Module.get_attribute(__CALLER__.module, :dagger_compiler)
-    Compiler.add_step(comp, __MODULE__, name, line, args, do_block)
+    Compiler.add_step(comp, __MODULE__, name, line_num, args, do_block)
   end
 
   defmacro next_step(_name) do

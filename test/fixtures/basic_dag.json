@@ -3,19 +3,19 @@
   "sanitized_name": "my-other-flow",
   "steps": [
     {
-      "line": 8,
       "arity": 0,
       "fun_name": "finish",
       "inputs": [],
+      "line": 8,
       "name": "finish",
       "next": null,
       "return": "unknown"
     },
     {
-      "line": 4,
       "arity": 0,
       "fun_name": "start",
       "inputs": [],
+      "line": 4,
       "name": "start",
       "next": "finish",
       "return": "unknown"
